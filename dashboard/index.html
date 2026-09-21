@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>한국전력공사 DART 재무 Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{font-family:system-ui,sans-serif;max-width:1200px;margin:auto;padding:24px;background:#f6f7f9;color:#1f2937}
+h1{margin-bottom:4px}.muted{color:#6b7280}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.card{background:white;border:1px solid #e5e7eb;border-radius:14px;padding:16px;box-shadow:0 2px 8px #0000000b}.value{font-size:25px;font-weight:700;margin-top:8px}
+.section{margin-top:22px}.chart{height:360px;background:white;padding:14px;border-radius:14px}.signals li{margin:8px 0}
+table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:9px;border-bottom:1px solid #eee;text-align:right}th:first-child,td:first-child{text-align:left}
+</style></head>
+<body>
+<h1>한국전력공사 DART 재무 Dashboard</h1><div class="muted" id="updated">데이터 로딩 중...</div>
+<div class="section"><div class="grid" id="cards"></div></div>
+<div class="section chart"><canvas id="chart"></canvas></div>
+<div class="section card"><h2>주요 분석 신호</h2><ul class="signals" id="signals"></ul></div>
+<div class="section card"><h2>연도별 주요 지표</h2><div style="overflow:auto"><table id="tbl"></table></div></div>
+<script>
+const pct=x=>x==null?"-":(x*100).toFixed(1)+"%";
+const money=x=>x==null?"-":(x/1e8).toLocaleString("ko-KR",{maximumFractionDigits:0})+"억원";
+fetch("data.json").then(r=>r.json()).then(d=>{
+ document.getElementById("updated").textContent=`기준: ${d.latest_year??"-"}년 | 업데이트: ${new Date(d.updated_at).toLocaleString("ko-KR")}`;
+ const ys=Object.keys(d.years).sort(), last=d.years[ys.at(-1)];
+ const cards=[
+ ["매출액",money(last.revenue)],["영업이익",money(last.operating_income)],["당기순이익",money(last.net_income)],
+ ["영업이익률",pct(last.operating_margin)],["ROE",pct(last.roe)],["부채비율",pct(last.debt_ratio)],
+ ["CFO",money(last.cfo)],["FCF",money(last.fcf)],["순차입금",money(last.net_debt)]
+ ];
+ document.getElementById("cards").innerHTML=cards.map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="value">${x[1]}</div></div>`).join("");
+ const labels=ys.map(y=>y+"년");
+ new Chart(document.getElementById("chart"),{type:"line",data:{labels,datasets:[
+ {label:"매출액(억원)",data:ys.map(y=>d.years[y].revenue/1e8)},
+ {label:"영업이익(억원)",data:ys.map(y=>d.years[y].operating_income/1e8)},
+ {label:"CFO(억원)",data:ys.map(y=>d.years[y].cfo/1e8)}
+ ]},options:{responsive:true,maintainAspectRatio:false}});
+ const all=[...(last.signals||[])];
+ document.getElementById("signals").innerHTML=all.length?all.map(s=>`<li>${s}</li>`).join(""):"현재 자동 규칙에서 표시할 주요 신호가 없습니다.";
+ const rows=[["연도","매출액","영업이익","순이익","영업이익률","ROE","부채비율","CFO","FCF","순차입금/EBITDA"]];
+ ys.slice().reverse().forEach(y=>{let x=d.years[y];rows.push([y,money(x.revenue),money(x.operating_income),money(x.net_income),pct(x.operating_margin),pct(x.roe),pct(x.debt_ratio),money(x.cfo),money(x.fcf),x.net_debt_ebitda==null?"-":x.net_debt_ebitda.toFixed(2)+"x"])});
+ document.getElementById("tbl").innerHTML=rows.map((r,i)=>"<tr>"+r.map(c=>i?"<td>"+c+"</td>":"<th>"+c+"</th>").join("")+"</tr>").join("");
+});
+</script></body></html>
