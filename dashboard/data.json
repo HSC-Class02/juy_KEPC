@@ -1,1 +1,23 @@
-{"company":{"name":"한국전력공사"},"updated_at":"not-run","latest_year":null,"years":{},"filings":[]}
+{
+  "company": {
+    "name": "한국전력공사",
+    "corp_code": "00159193"
+  },
+  "updated_at": null,
+  "latest_year": null,
+  "data_coverage": {
+    "requested_start_year": 2010
+  },
+  "years": {},
+  "periods": {
+    "annual": [],
+    "half_year": [],
+    "quarterly": []
+  },
+  "filings": [],
+  "methodology": {
+    "basis": "연결(CFS) 우선, 불가능한 경우 별도(OFS) 대체",
+    "notes": []
+  },
+  "collection_warnings": []
+}
