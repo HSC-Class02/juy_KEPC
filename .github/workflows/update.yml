@@ -10,7 +10,7 @@ on:
     paths:
       - ".github/workflows/update.yml"
       - "scripts/update.py"
-      - "src/**"
+      - "src/**/*.py"
       - "requirements.txt"
 
 permissions:
@@ -38,7 +38,7 @@ jobs:
         run: python -m pip install --upgrade pip && pip install -r requirements.txt
       - name: Collect DART financial data
         env:
-          DART_API_KEY: ${{ secrets.DART_API_KEY }}
+          DART_API_KEY: ${{ secrets.DART_API_KEY || secrets.OPENDART_API_KEY }}
         run: python scripts/update.py
       - name: Commit refreshed dashboard data
         run: |
