@@ -41,7 +41,7 @@ GitHub Actions가 **매월 1일(한국시간 오전 9시)** 자동 실행되며,
 ## 최초 설정
 
 1. Repository의 **Settings → Secrets and variables → Actions**에서 repository secret을 추가합니다.
-2. Secret 이름은 `DART_API_KEY`, 값은 OpenDART에서 발급한 API 인증키로 설정합니다.
+2. Secret 이름은 `DART_API_KEY`, 값은 OpenDART에서 발급한 API 인증키로 설정합니다. 기존 저장소에서 `OPENDART_API_KEY` 이름을 사용한다면 workflow가 해당 이름도 대체 키로 확인합니다.
 3. **Settings → Pages**에서 배포 소스를 GitHub Actions로 설정합니다.
 4. Actions 탭에서 **Update KEPCO financial data** workflow를 한 번 실행해 초기 데이터를 수집합니다. 워크플로가 저장소 변경 시 자동으로 시작되면 별도 실행은 필요하지 않습니다.
 
