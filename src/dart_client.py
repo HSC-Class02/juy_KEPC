@@ -9,7 +9,7 @@ class DartError(RuntimeError):
 
 
 class DartClient:
-    def __init__(self, api_key=None, timeout=60):
+    def __init__(self, api_key=None, timeout=20):
         self.api_key = api_key or os.getenv("DART_API_KEY")
         if not self.api_key:
             raise DartError("DART_API_KEY가 설정되지 않았습니다.")

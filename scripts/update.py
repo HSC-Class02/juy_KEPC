@@ -3,6 +3,7 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -86,7 +87,7 @@ def main():
     if not os.getenv("DART_API_KEY"):
         raise RuntimeError("Repository secret DART_API_KEY가 설정되어 있지 않습니다.")
 
-    client = DartClient()
+    client = DartClient(timeout=20)
     today = datetime.now(timezone.utc)
     this_year = today.year
     annual = {}
@@ -103,27 +104,45 @@ def main():
     except Exception as exc:
         print(f"[WARN] 공시 목록 조회 실패: {exc}")
 
+    jobs = []
     for year in range(START_YEAR, this_year + 1):
         for category, report_code, report_name in REPORTS:
             # The current-year annual report cannot normally exist until the following year.
             if category == "annual" and year == this_year:
                 continue
-            try:
-                rows, basis = fetch_report(client, year, report_code)
-                if not rows:
-                    continue
-                item = enrich(rows, year, category, report_code, report_name, basis)
-                item = simple_period_ratios(item)
-                if category == "annual":
-                    annual[str(year)] = item
-                elif category == "half_year":
-                    half_periods.append(item)
-                else:
-                    quarterly_periods.append(item)
-                print(f"[OK] {year} {report_name}: {len(rows)} accounts ({basis})")
-            except Exception as exc:
-                failures.append(f"{year}/{report_name}: {exc}")
-                print(f"[WARN] {year} {report_name}: {exc}")
+            jobs.append((year, category, report_code, report_name))
+
+    def collect_one(job):
+        year, category, report_code, report_name = job
+        try:
+            # Use one session per worker to keep concurrent HTTP requests independent.
+            worker_client = DartClient(timeout=20)
+            rows, basis = fetch_report(worker_client, year, report_code)
+            if not rows:
+                return category, None, None
+            item = enrich(rows, year, category, report_code, report_name, basis)
+            return category, simple_period_ratios(item), None
+        except Exception as exc:
+            return category, None, f"{year}/{report_name}: {exc}"
+
+    # Limited concurrency shortens the initial backfill without flooding OpenDART.
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = [pool.submit(collect_one, job) for job in jobs]
+        for future in as_completed(futures):
+            category, item, error = future.result()
+            if error:
+                failures.append(error)
+                print(f"[WARN] {error}")
+                continue
+            if item is None:
+                continue
+            if category == "annual":
+                annual[str(item["year"])] = item
+            elif category == "half_year":
+                half_periods.append(item)
+            else:
+                quarterly_periods.append(item)
+            print(f"[OK] {item['year']} {item['period_name']}: {item['source_rows']} accounts ({item['financial_basis']})")
 
     if not annual and not half_periods and not quarterly_periods:
         raise RuntimeError(
